@@ -6,17 +6,24 @@ from trio_websocket import serve_websocket, ConnectionClosed
 
 async def echo_server(request):
     ws = await request.accept()
-    while True:
+
+    with open('156.json',  'r', encoding='utf-8') as fp:
+        bus_data = json.load(fp)
+    for lat, lng in bus_data['coordinates']:
         try:
-            # message = await ws.get_message()
-            message = eval("""{
-  "msgType": "Buses",
-  "buses": [
-    {"busId": "c790сс", "lat": 55.7500, "lng": 37.600, "route": "120"},
-    {"busId": "a134aa", "lat": 55.7494, "lng": 37.621, "route": "670к"},
-  ]
-}""")
-            await ws.send_message(json.dumps(message))
+            await ws.get_message()
+            message =json.dumps(
+                {
+                    "msgType": "Buses",
+                    "buses": [
+                        {"busId": "c790сс", "lat": lat, "lng":lng,
+                         "route": "120"},
+                    ]
+                }
+
+            )
+            await ws.send_message(message)
+            # await trio.sleep(.1)
         except ConnectionClosed:
             break
 
