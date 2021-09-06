@@ -1,5 +1,6 @@
 import json
 import os
+from itertools import cycle
 
 import trio
 from sys import stderr
@@ -13,19 +14,25 @@ def load_routes(directory_path='routes'):
                 yield json.load(file)
 
 
+async def run_bus(url, route):
+    async with open_websocket_url(url) as ws:
+        for lat, lng in cycle(route['coordinates']):
+            bus_data = {
+                "busId": route['name'],
+                "lat": lat,
+                "lng": lng,
+                "route": route['name'],
+            }
+            await ws.send_message(json.dumps(bus_data, ensure_ascii=False))
+
 
 async def main():
     try:
-        async with open_websocket_url("ws://127.0.0.1:8080") as ws:
-            for rout_data in load_routes():
-                for lat, lng in rout_data['coordinates']:
-                    bus_data = {
-                        "busId": rout_data['name'],
-                        "lat": lat,
-                        "lng": lng,
-                        "route": rout_data['name'],
-                    }
-                await ws.send_message(json.dumps(bus_data))
+
+        for route in load_routes():
+            async with trio.open_nursery() as nursery:
+                nursery.start_soon(run_bus, "ws://127.0.0.1:8080", route)
+
                 # await trio.sleep(.1)
             # await ws.get_message()
     except OSError as ose:
