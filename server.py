@@ -39,29 +39,39 @@ async def receive_bus_info(request):
         try:
             message = await ws.get_message()
             bus = Bus.from_json(message)
-            # logger.debug(bus)
             buses[bus.bus_id] = bus
-            # logger.debug('add bus', busses=buses)
-
         except ConnectionClosed:
             break
 
 
+async def listen_browser(ws: WebSocketConnection):
+    while True:
+        message = await ws.get_message()
+        logger.debug(message)
+
+async def send_buses(ws: WebSocketConnection):
+    while True:
+        message = humps.camelize(
+            json.dumps(
+                {
+                    "msg_type": "Buses",
+                    "buses": [bus.to_dict() for bus in buses.values()],
+                }
+            )
+        )
+        await ws.send_message(message)
+        logger.debug("send to browser", message=message)
+        await trio.sleep(ServerSettings().SEND_TO_BROWSER_INTERVAL)
+
 async def talk_to_browser(request):
     try:
         ws = await request.accept()
-        while True:
-            message = humps.camelize(
-                json.dumps(
-                    {
-                        "msg_type": "Buses",
-                        "buses": [bus.to_dict() for bus in buses.values()],
-                    }
-                )
-            )
-            await ws.send_message(message)
-            logger.debug("send to browser", message=message)
-            await trio.sleep(ServerSettings().SEND_TO_BROWSER_INTERVAL)
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(listen_browser, ws)
+            nursery.start_soon(send_buses, ws)
+
+
+
     except ConnectionClosed:
         logger.info("browser connection lost")
 
