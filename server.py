@@ -1,5 +1,5 @@
 import json
-import sys
+import asyncclick as click
 from functools import partial
 from typing import Dict, Union
 from uuid import UUID
@@ -17,8 +17,7 @@ from dataclasses_json import dataclass_json, LetterCase
 import humps
 
 
-# @dataclass_json (letter_case=LetterCase.CAMEL)
-from settings import ServerSettings
+from settings import ServerSettings, get_loguru_config
 
 
 @dataclass_json
@@ -107,15 +106,21 @@ async def talk_to_browser(request):
         logger.info("browser connection lost")
 
 
-async def main():
-    # logger.configure(**loguru_config)
+@click.command()
+@click.option("-p", "--bus_port", default=8080, help="Port for bus emulator.")
+@click.option(
+    "-b", "--browser_port", default=8000, help="Number of bus routes."
+)
+@click.option("-l", "--log_level", help="Verbosity.")
+async def main(bus_port, browser_port, log_level):
+    logger.configure(**get_loguru_config(log_level))
     async with trio.open_nursery() as nursery:
         nursery.start_soon(
             partial(
                 serve_websocket,
                 handler=receive_bus_info,
                 host="127.0.0.1",
-                port=8080,
+                port=bus_port,
                 ssl_context=None,
             )
         )
@@ -124,11 +129,10 @@ async def main():
                 serve_websocket,
                 handler=talk_to_browser,
                 host="127.0.0.1",
-                port=8000,
+                port=browser_port,
                 ssl_context=None,
             )
         )
-        # await serve_websocket(echo_server, '127.0.0.1', 8080, ssl_context=None)
 
 
 if __name__ == "__main__":
