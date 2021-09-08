@@ -6,14 +6,19 @@ from uuid import UUID
 
 from loguru import logger
 import trio
-from trio_websocket import serve_websocket, ConnectionClosed, WebSocketConnection, HandshakeError
+from trio_websocket import (
+    serve_websocket,
+    ConnectionClosed,
+    WebSocketConnection,
+    HandshakeError,
+)
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json, LetterCase
 import humps
 
 
 # @dataclass_json (letter_case=LetterCase.CAMEL)
-from settings import loguru_config, ServerSettings
+from settings import ServerSettings
 
 
 @dataclass_json
@@ -25,7 +30,7 @@ class Bus:
     lng: float
 
 
-buses: dict[str,Bus] = {}
+buses: dict[str, Bus] = {}
 
 
 async def receive_bus_info(request):
@@ -42,37 +47,27 @@ async def receive_bus_info(request):
             break
 
 
-
-async def send_routes_to_browser(ws: WebSocketConnection ):
-    while True:
-        # await ws.get_message()
-
-        message = humps.camelize(json.dumps(
-
-            {
-                "msg_type": "Buses",
-                "buses": [bus.to_dict() for bus in buses.values()]
-            }
-
-        ))
-
-
-
-        logger.debug('send to browser', message=message)
-        await ws.send_message(message)
-        await trio.sleep(ServerSettings().SEND_TO_BROWSER_INTERVAL)
-
-
 async def talk_to_browser(request):
-    ws = await request.accept()
-    async with trio.open_nursery() as nursery:
-        nursery.start_soon(send_routes_to_browser, ws)
-
-
+    try:
+        ws = await request.accept()
+        while True:
+            message = humps.camelize(
+                json.dumps(
+                    {
+                        "msg_type": "Buses",
+                        "buses": [bus.to_dict() for bus in buses.values()],
+                    }
+                )
+            )
+            await ws.send_message(message)
+            logger.debug("send to browser", message=message)
+            await trio.sleep(ServerSettings().SEND_TO_BROWSER_INTERVAL)
+    except ConnectionClosed:
+        logger.info("browser connection lost")
 
 
 async def main():
-    logger.configure(**loguru_config)
+    # logger.configure(**loguru_config)
     async with trio.open_nursery() as nursery:
         nursery.start_soon(
             partial(
@@ -95,10 +90,9 @@ async def main():
         # await serve_websocket(echo_server, '127.0.0.1', 8080, ssl_context=None)
 
 
-if __name__ == '__main__':
-    logger.info('starting server..')
+if __name__ == "__main__":
+    logger.info("starting server..")
     try:
         trio.run(main)
     except KeyboardInterrupt:
-        logger.info('server stopped')
-
+        logger.info("server stopped")

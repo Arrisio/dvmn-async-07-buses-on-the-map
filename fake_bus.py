@@ -3,6 +3,7 @@ import os
 from itertools import cycle, islice
 from random import choice, randint
 from uuid import uuid4
+import asyncclick as click
 
 import trio
 from loguru import logger
@@ -20,7 +21,7 @@ from trio_websocket import (
 )
 
 from server import Bus
-from settings import FakeBusSettings, loguru_config
+from settings import FakeBusSettings, get_loguru_config
 
 
 def load_routes(directory_path="routes"):
@@ -44,7 +45,7 @@ class FakeGate:
         wait=wait_fixed(FakeBusSettings().RECONNECT_TIMEOUT),
         sleep=trio.sleep,
         retry=retry_if_exception_type((HandshakeError, ConnectionClosed)),
-        after=after_log(logger, FakeBusSettings().LOG_LEVEL),
+        after=after_log(logger, "ERROR"),
     )
     async def send_updates(self):
         async with open_websocket_url(self.url) as ws:
@@ -71,7 +72,7 @@ class FakeBus:
             None,
         )
 
-    async def emulate(self):
+    async def emulate(self, movement_cooldown):
         while True:
             lat, lng = next(self._bus_coordinates)
             await self.gate.send_channel.send(
@@ -82,30 +83,63 @@ class FakeBus:
                     lat=lat,
                 )
             )
-            await trio.sleep(FakeBusSettings().BUS_MOVEMENT_INTERVAL)
+            await trio.sleep(movement_cooldown)
 
 
-async def main():
-    connection_number = 10
-    buses_number = 1000
+@click.command()
+@click.option(
+    "-u", "--url", default=FakeBusSettings().SERVER_URL, help="Server url."
+)
+@click.option(
+    "-c",
+    "--connection_count",
+    default=FakeBusSettings().CONNECTION_COUNT,
+    help="Number connecrtions to server.",
+)
+@click.option(
+    "-b",
+    "--bus_count",
+    default=FakeBusSettings().BUS_COUNT,
+    help="Number of buses.",
+)
+@click.option(
+    "-r",
+    "--routes_path",
+    default=FakeBusSettings().ROUTES_FATH,
+    help="directory with routes",
+)
+@click.option(
+    "-l", "--log_level", default=FakeBusSettings().LOG_LEVEL, help="log level"
+)
+@click.option(
+    "-m",
+    "--movement_cooldown",
+    default=FakeBusSettings().BUS_MOVEMENT_COOLDOWN,
+    help="period when bus changing coordinates",
+)
+async def main(
+    url, connection_count, movement_cooldown, bus_count, routes_path, log_level
+):
+    logger.configure(**get_loguru_config(log_level))
 
-    routes = list(load_routes("./routes"))
-    gates = [FakeGate("ws://127.0.0.1:8080") for _ in range(connection_number)]
+    logger.info("starting ...")
+    routes = list(load_routes(routes_path))
+    gates = [FakeGate(url) for _ in range(connection_count)]
     buses = [
         FakeBus(route=choice(routes), gate=choice(gates))
-        for _ in range(buses_number)
+        for _ in range(bus_count)
     ]
-    logger.info('start simulation buses')
+
+    logger.info("start simulation buses")
     async with trio.open_nursery() as nursery:
         for gate in gates:
             nursery.start_soon(gate.send_updates)
         for bus in buses:
-            nursery.start_soon(bus.emulate)
+            nursery.start_soon(bus.emulate, movement_cooldown)
 
-if __name__ == '__main__':
-    logger.configure(**loguru_config)
+
+if __name__ == "__main__":
     try:
-        trio.run(main)
+        main(_anyio_backend='trio')
     except KeyboardInterrupt:
-        logger.info('Application closed.')
-
+        logger.info("Application closed.")
