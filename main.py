@@ -22,6 +22,7 @@ async def echo_server(request):
                 }
 
             )
+            print(message)
             await ws.send_message(message)
             # await trio.sleep(.1)
         except ConnectionClosed:
