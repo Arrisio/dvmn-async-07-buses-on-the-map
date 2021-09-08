@@ -13,6 +13,9 @@ import humps
 
 
 # @dataclass_json (letter_case=LetterCase.CAMEL)
+from settings import loguru_config, ServerSettings
+
+
 @dataclass_json
 @dataclass
 class Bus:
@@ -42,7 +45,7 @@ async def receive_bus_info(request):
 
 async def send_routes_to_browser(ws: WebSocketConnection ):
     while True:
-        await ws.get_message()
+        # await ws.get_message()
 
         message = humps.camelize(json.dumps(
 
@@ -57,6 +60,7 @@ async def send_routes_to_browser(ws: WebSocketConnection ):
 
         logger.debug('send to browser', message=message)
         await ws.send_message(message)
+        await trio.sleep(ServerSettings().SEND_TO_BROWSER_INTERVAL)
 
 
 async def talk_to_browser(request):
@@ -68,16 +72,6 @@ async def talk_to_browser(request):
 
 
 async def main():
-    loguru_config = {
-        "handlers": [
-            {
-                "sink": sys.stdout,
-                "level": "DEBUG",
-                # "serialize": Settings().LOG_USE_JSON,
-                "format": "<level>{level: <8} {time:YYYY-MM-DD HH:mm:ss}</level>|<cyan>{name:<12}</cyan>:<cyan>{function:<24}</cyan>:<cyan>{line}</cyan> - <level>{message:>32}</level> |{extra}",
-            },
-        ],
-    }
     logger.configure(**loguru_config)
     async with trio.open_nursery() as nursery:
         nursery.start_soon(
@@ -102,5 +96,9 @@ async def main():
 
 
 if __name__ == '__main__':
-    trio.run(main)
+    logger.info('starting server..')
+    try:
+        trio.run(main)
+    except KeyboardInterrupt:
+        logger.info('server stopped')
 

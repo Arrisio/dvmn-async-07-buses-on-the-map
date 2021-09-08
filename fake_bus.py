@@ -20,7 +20,7 @@ from trio_websocket import (
 )
 
 from server import Bus
-from settings import FakeBusSettings
+from settings import FakeBusSettings, loguru_config
 
 
 def load_routes(directory_path="routes"):
@@ -87,7 +87,7 @@ class FakeBus:
 
 async def main():
     connection_number = 10
-    buses_number = 100
+    buses_number = 1000
 
     routes = list(load_routes("./routes"))
     gates = [FakeGate("ws://127.0.0.1:8080") for _ in range(connection_number)]
@@ -95,12 +95,17 @@ async def main():
         FakeBus(route=choice(routes), gate=choice(gates))
         for _ in range(buses_number)
     ]
-
+    logger.info('start simulation buses')
     async with trio.open_nursery() as nursery:
         for gate in gates:
             nursery.start_soon(gate.send_updates)
         for bus in buses:
             nursery.start_soon(bus.emulate)
 
+if __name__ == '__main__':
+    logger.configure(**loguru_config)
+    try:
+        trio.run(main)
+    except KeyboardInterrupt:
+        logger.info('Application closed.')
 
-trio.run(main)
