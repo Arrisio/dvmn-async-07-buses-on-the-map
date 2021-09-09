@@ -58,7 +58,7 @@ buses: dict[str, Bus] = {}
 
 
 async def receive_bus_info(request):
-    logger.info('start receiving bus coordinates')
+    logger.info("start receiving bus coordinates")
     ws = await request.accept()
     while True:
         try:
@@ -66,7 +66,7 @@ async def receive_bus_info(request):
             try:
                 bus = Bus.from_json(message)
             except KeyError as e:
-                logger.warning('incorrect bus coordinates')
+                logger.warning("incorrect bus coordinates")
                 await ws.send_message(
                     json.dumps(
                         {
@@ -75,13 +75,13 @@ async def receive_bus_info(request):
                         }
                     )
                 )
-                return
+                continue
             except JSONDecodeError:
-                logger.warning('incorrect bus coordinates')
+                logger.warning("incorrect bus coordinates")
                 await ws.send_message(
                     '{"errors": ["Requires valid JSON"], "msgType": "Errors"}'
                 )
-                return
+                continue
 
             buses[bus.bus_id] = bus
         except ConnectionClosed:
@@ -89,13 +89,29 @@ async def receive_bus_info(request):
 
 
 async def listen_browser(ws: WebSocketConnection, windows_bounds: WindowBounds):
-    logger.info('start serving browser requests')
+    logger.info("start serving browser requests")
     while True:
         message = await ws.get_message()
         logger.debug(message)
-        browser_message_data = json.loads(message)
-        if browser_message_data["msgType"] == "newBounds":
-            windows_bounds.update(**browser_message_data["data"])
+        try:
+            browser_message_data = json.loads(message)
+            if browser_message_data["msgType"] == "newBounds":
+                windows_bounds.update(**browser_message_data["data"])
+        except KeyError as e:
+            logger.warning("incorrect bus coordinates")
+            await ws.send_message(
+                json.dumps(
+                    {
+                        "errors": [f"Requires {e} specified"],
+                        "msgType": "Errors",
+                    }
+                )
+            )
+        except JSONDecodeError:
+            logger.warning("incorrect window bounds coordinates")
+            await ws.send_message(
+                '{"errors": ["Requires valid JSON"], "msgType": "Errors"}'
+            )
 
 
 async def send_buses(ws: WebSocketConnection, windows_bounds: WindowBounds):

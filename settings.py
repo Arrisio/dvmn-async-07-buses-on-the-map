@@ -6,6 +6,8 @@ from pydantic import BaseSettings, AnyUrl
 
 class ServerSettings(BaseSettings):
     SEND_TO_BROWSER_INTERVAL: Union[int, float] = 1
+    BROWSER_PORT: int = 8000
+    BUS_PORT: int = 8080
     LOG_LEVEL: str = "INFO"
     class Config:
         env_file: str = ".env"
@@ -14,9 +16,7 @@ class ServerSettings(BaseSettings):
 class FakeBusSettings(BaseSettings):
     SERVER_URL: AnyUrl = "ws://127.0.0.1:8080"
     CONNECTION_COUNT: int = 20
-
     BUS_COUNT: int = 1000
-
     BUS_MOVEMENT_COOLDOWN: Union[int, float] = 1
     MAX_BUFFER_SIZE: int = 100
     RECONNECT_TIMEOUT: int = 2
