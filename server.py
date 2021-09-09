@@ -1,4 +1,6 @@
 import json
+from json import JSONDecodeError
+
 import asyncclick as click
 from functools import partial
 from typing import Dict, Union
@@ -56,17 +58,38 @@ buses: dict[str, Bus] = {}
 
 
 async def receive_bus_info(request):
+    logger.info('start receiving bus coordinates')
     ws = await request.accept()
     while True:
         try:
             message = await ws.get_message()
-            bus = Bus.from_json(message)
+            try:
+                bus = Bus.from_json(message)
+            except KeyError as e:
+                logger.warning('incorrect bus coordinates')
+                await ws.send_message(
+                    json.dumps(
+                        {
+                            "errors": [f"Requires {e} specified"],
+                            "msgType": "Errors",
+                        }
+                    )
+                )
+                return
+            except JSONDecodeError:
+                logger.warning('incorrect bus coordinates')
+                await ws.send_message(
+                    '{"errors": ["Requires valid JSON"], "msgType": "Errors"}'
+                )
+                return
+
             buses[bus.bus_id] = bus
         except ConnectionClosed:
             break
 
 
 async def listen_browser(ws: WebSocketConnection, windows_bounds: WindowBounds):
+    logger.info('start serving browser requests')
     while True:
         message = await ws.get_message()
         logger.debug(message)
@@ -111,7 +134,7 @@ async def talk_to_browser(request):
 @click.option(
     "-b", "--browser_port", default=8000, help="Number of bus routes."
 )
-@click.option("-l", "--log_level", help="Verbosity.")
+@click.option("-l", "--log_level", default=ServerSettings().LOG_LEVEL)
 async def main(bus_port, browser_port, log_level):
     logger.configure(**get_loguru_config(log_level))
     async with trio.open_nursery() as nursery:
@@ -138,6 +161,6 @@ async def main(bus_port, browser_port, log_level):
 if __name__ == "__main__":
     logger.info("starting server..")
     try:
-        trio.run(main)
+        main(_anyio_backend="trio")
     except KeyboardInterrupt:
         logger.info("server stopped")
