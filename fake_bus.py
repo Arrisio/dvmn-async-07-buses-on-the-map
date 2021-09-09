@@ -87,9 +87,7 @@ class FakeBus:
 
 
 @click.command()
-@click.option(
-    "-u", "--url", default=FakeBusSettings().HOST, help="Server url."
-)
+@click.option("-u", "--url", default=FakeBusSettings().HOST, help="Server url.")
 @click.option(
     "-c",
     "--connection_count",
@@ -140,6 +138,6 @@ async def main(
 
 if __name__ == "__main__":
     try:
-        main(_anyio_backend='trio')
+        main(_anyio_backend="trio")
     except KeyboardInterrupt:
         logger.info("Application closed.")

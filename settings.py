@@ -9,9 +9,11 @@ class ServerSettings(BaseSettings):
     BROWSER_PORT: int = 8000
     BUS_PORT: int = 8080
     LOG_LEVEL: str = "INFO"
+
     class Config:
         env_file: str = ".env"
         env_file_encoding = "utf-8"
+
 
 class FakeBusSettings(BaseSettings):
     SERVER_URL: AnyUrl = "ws://127.0.0.1:8080"
@@ -29,8 +31,7 @@ class FakeBusSettings(BaseSettings):
         env_file_encoding = "utf-8"
 
 
-
-def get_loguru_config(log_level=ServerSettings().LOG_LEVEL)-> dict:
+def get_loguru_config(log_level=ServerSettings().LOG_LEVEL) -> dict:
     return {
         "handlers": [
             {
