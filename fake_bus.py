@@ -87,7 +87,7 @@ class FakeBus:
 
 
 @click.command()
-@click.option("-u", "--url", default=FakeBusSettings().HOST, help="Server url.")
+@click.option("-u", "--url", default=FakeBusSettings().SERVER_URL, help="Server url.")
 @click.option(
     "-c",
     "--connection_count",
