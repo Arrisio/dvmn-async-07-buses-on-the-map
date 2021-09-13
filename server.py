@@ -77,7 +77,9 @@ async def receive_bus_info(request):
             except JSONDecodeError:
                 logger.warning("incorrect bus coordinates")
                 await ws.send_message(
-                    '{"errors": ["Requires valid JSON"], "msgType": "Errors"}'
+                    json.dumps(
+                        {"errors": ["Requires valid JSON"], "msgType": "Errors"}
+                    )
                 )
                 continue
 
