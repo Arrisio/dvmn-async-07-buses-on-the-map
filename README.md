@@ -2,7 +2,7 @@
 
 Веб-приложение показывает передвижение автобусов на карте Москвы.
 
-<img src="screenshots/buses.gif">
+<img src="https://user-images.githubusercontent.com/14781165/133058947-22a6b51e-8ec5-4742-a8f2-2cea92ea0046.gif">
 
 ## Клиентская часть
 ### Как запустить
@@ -15,7 +15,7 @@
 
 Внизу справа на странице можно включить отладочный режим логгирования и указать нестандартный адрес веб-сокета.
 
-<img src="screenshots/settings.png">
+<img src="https://user-images.githubusercontent.com/14781165/133058912-b4f740f3-ef91-4015-a457-f0a2532f7353.png">
 
 Настройки сохраняются в Local Storage браузера и не пропадают после обновления страницы. Чтобы сбросить настройки удалите ключи из Local Storage с помощью Chrome Dev Tools —> Вкладка Application —> Local Storage.
 
