@@ -37,7 +37,11 @@ def get_loguru_config(log_level=ServerSettings().LOG_LEVEL) -> dict:
             {
                 "sink": sys.stdout,
                 "level": log_level,
-                "format": "<level>{level: <8} {time:YYYY-MM-DD HH:mm:ss}</level>|<cyan>{name:<12}</cyan>:<cyan>{function:<24}</cyan>:<cyan>{line}</cyan> - <level>{message:>32}</level> |{extra}",
+                "format": (
+                    "<level>{level: <8} {time:YYYY-MM-DD HH:mm:ss}</level>|"
+                    "<cyan>{name:<12}</cyan>:<cyan>{function:<24}</cyan>:"
+                    "<cyan>{line}</cyan> - <level>{message:>32}</level>|{extra}"
+                ),
             },
         ],
     }
